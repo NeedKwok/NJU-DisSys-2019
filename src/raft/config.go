@@ -397,12 +397,14 @@ func (cfg *config) one(cmd int, expectedServers int) int {
 				index1, _, ok := rf.Start(cmd)
 				if ok {
 					index = index1
+
 					break
 				}
 			}
 		}
 
 		if index != -1 {
+			fmt.Printf("index = %d\n", index)
 			// somebody claimed to be the leader and to have
 			// submitted our command; wait a while for agreement.
 			t1 := time.Now()

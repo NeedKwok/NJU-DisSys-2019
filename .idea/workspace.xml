@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="558ac743-39b1-4d9c-ab46-81873a9bc231" name="Default" comment="EX01:election(pass test1 and test 2)">
+    <list default="true" id="558ac743-39b1-4d9c-ab46-81873a9bc231" name="Default" comment="EX02:passed test3">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/labrpc/labrpc.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/labrpc/labrpc.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/raft/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/config.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/raft/raft.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/raft.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/raft/test_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/raft/test_test.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -64,7 +68,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Go Test.TestFailAgree in raft">
+  <component name="RunManager" selected="Go Test.go test raft">
     <configuration default="true" type="Applet" factoryName="Applet">
       <option name="HTML_USED" value="false" />
       <option name="WIDTH" value="400" />
@@ -152,7 +156,7 @@
       <predefined_log_file id="idea.log" enabled="true" />
       <method />
     </configuration>
-    <configuration name="TestBasicAgree in raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestBackup in raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="NJU-DisSys-2017" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <framework value="gotest" />
@@ -160,10 +164,10 @@
       <package value="raft" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestBasicAgree$" />
+      <pattern value="^TestBackup$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestFailAgree in raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestConcurrentStarts in raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="NJU-DisSys-2017" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <framework value="gotest" />
@@ -171,10 +175,10 @@
       <package value="raft" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestFailAgree$" />
+      <pattern value="^TestConcurrentStarts$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestInitialElection in raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestPersist2 in raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="NJU-DisSys-2017" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <framework value="gotest" />
@@ -182,10 +186,10 @@
       <package value="raft" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestInitialElection$" />
+      <pattern value="^TestPersist2$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestReElection in raft (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestRejoin in raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="NJU-DisSys-2017" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <framework value="gotest" />
@@ -193,10 +197,10 @@
       <package value="raft" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestReElection$" />
+      <pattern value="^TestRejoin$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestReElection in raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="go test raft" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="NJU-DisSys-2017" />
       <working_directory value="$PROJECT_DIR$/src/raft" />
       <framework value="gotest" />
@@ -204,16 +208,15 @@
       <package value="raft" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestReElection$" />
       <method v="2" />
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Test.TestFailAgree in raft" />
-        <item itemvalue="Go Test.TestBasicAgree in raft" />
-        <item itemvalue="Go Test.TestReElection in raft (1)" />
-        <item itemvalue="Go Test.TestInitialElection in raft (1)" />
-        <item itemvalue="Go Test.TestReElection in raft" />
+        <item itemvalue="Go Test.go test raft" />
+        <item itemvalue="Go Test.TestConcurrentStarts in raft" />
+        <item itemvalue="Go Test.TestPersist2 in raft" />
+        <item itemvalue="Go Test.TestBackup in raft" />
+        <item itemvalue="Go Test.TestRejoin in raft" />
       </list>
     </recent_temporary>
   </component>
@@ -245,6 +248,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="EX01:election(pass test1 and test 2)" />
-    <option name="LAST_COMMIT_MESSAGE" value="EX01:election(pass test1 and test 2)" />
+    <MESSAGE value="EX02:passed test3" />
+    <option name="LAST_COMMIT_MESSAGE" value="EX02:passed test3" />
   </component>
 </project>

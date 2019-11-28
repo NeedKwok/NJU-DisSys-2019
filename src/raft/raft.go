@@ -20,7 +20,6 @@ package raft
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -72,18 +71,18 @@ type Raft struct { //服务器结构
 	nextIndex  []int //要发往这台服务器的下一个日志项索引，初始化为leader的最后一条日志的索引+1
 	matchIndex []int //要在服务器上复制的最高日志项的索引，初始化0，单增
 
-	state   int //1:leader ; 2:follower ; 3:candidate
+	state   int //1:leader ; 2:follower ; 3:candidate ; 4:precandidate
 	applyCh chan ApplyMsg
 
-	timer      *time.Timer
-	votesCount int
+	timer         *time.Timer
+	votesCount    int
+	preVotesCount int //预选举票数
 	// Your data here.
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
 }
 
 func (rf *Raft) RestartTime() {
-
 	randTime := ElectionMinTime + rand.Int63n(ElectionRandTime)
 	timeout := time.Millisecond * time.Duration(randTime)
 	if rf.state == 1 {
@@ -121,10 +120,17 @@ type RequestVoteReply struct {
 	// Your data here.
 }
 
+type PreVoteReply struct {
+	Term int
+}
+type PreVoteArgs struct {
+	Term int
+}
+
 func (rf *Raft) ApplyCommit() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-
+	//fmt.Printf("%d,%d,server = %d\n", rf.commitIndex, rf.lastApplied,rf.me)
 	for i := rf.lastApplied + 1; i <= rf.commitIndex; i++ {
 		var args ApplyMsg
 		args.Index = i
@@ -132,6 +138,7 @@ func (rf *Raft) ApplyCommit() {
 		rf.applyCh <- args
 	}
 	rf.lastApplied = rf.commitIndex
+	//fmt.Printf("%d,%d,server = %d\n", rf.commitIndex, rf.lastApplied,rf.me)
 }
 
 func (rf *Raft) TimeOutFunc() { //超时了做什么，如果不是leader，都会发起竞选，如果是leader,实际上只是计时器到了发送心跳
@@ -141,34 +148,75 @@ func (rf *Raft) TimeOutFunc() { //超时了做什么，如果不是leader，都�
 	rf.RestartTime() //重置超时计时器
 
 	if rf.state != 1 { //不是leader,则发起竞选
-		rf.state = 3
-		rf.currentTerm += 1
-		rf.votedFor = rf.me
-		rf.votesCount = 1 //先给自己投票
-		rf.persist()
+		if rf.state == 3 {
+			//rf.state = 3
+			rf.currentTerm += 1
+			rf.votedFor = rf.me
+			rf.votesCount = 1 //先给自己投票
+			rf.persist()
+			////fmt.Printf("%d term = %d start ele\n",rf.me,rf.currentTerm)
+			var args RequestVoteArgs
+			args.Term = rf.currentTerm
+			args.CandidateId = rf.me
+			args.LastLogIndex = len(rf.log) - 1
+			args.LastLogTerm = rf.log[args.LastLogIndex].Term
 
-		var args RequestVoteArgs
-		args.Term = rf.currentTerm
-		args.CandidateId = rf.me
-		args.LastLogIndex = len(rf.log) - 1
-		args.LastLogTerm = rf.log[args.LastLogIndex].Term
-
-		for peer := 0; peer < len(rf.peers); peer++ { // 给每个几点发送请求，拉票
-			if peer == rf.me {
-				continue
-			}
-
-			go func(peer int, args RequestVoteArgs) {
-				var reply RequestVoteReply
-				ok := rf.peers[peer].Call("Raft.ReplyRequestVote", args, &reply)
-				if ok {
-					rf.CountVote(reply)
+			for peer := 0; peer < len(rf.peers); peer++ { // 给每个几点发送请求，拉票
+				if peer == rf.me {
+					continue
 				}
-			}(peer, args)
+				go func(peer int, args RequestVoteArgs) {
+					var reply RequestVoteReply
+					ok := rf.peers[peer].Call("Raft.ReplyRequestVote", args, &reply)
+					if ok {
+						rf.CountVote(reply)
+					}
+				}(peer, args)
 
+			}
+		} else { //预选举
+			//fmt.Printf("预选举\n")
+			rf.state = 4
+			rf.preVotesCount = 1
+			var args PreVoteArgs
+			args.Term = rf.currentTerm
+			for peer := 0; peer < len(rf.peers); peer++ { // 给每个几点发送请求，拉票
+				if peer == rf.me {
+					continue
+				}
+				go func(peer int, args PreVoteArgs) {
+					var reply PreVoteReply
+					ok := rf.peers[peer].Call("Raft.ReplyPreVote", args, &reply)
+					if ok {
+						rf.CountPreVote(reply)
+					}
+				}(peer, args)
+
+			}
 		}
+
 	} else { //如果是leader,则发送心跳
 		rf.SendAppendEntries()
+	}
+}
+
+func (rf *Raft) CountPreVote(reply PreVoteReply) {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	if reply.Term > rf.currentTerm { //如果返回的term更大，说明自己过时了
+		rf.currentTerm = reply.Term
+		rf.state = 2
+		rf.votedFor = -1
+		rf.persist()
+	}
+	if rf.state == 4 {
+		rf.preVotesCount += 1
+		if rf.preVotesCount >= (len(rf.peers)+2)/2 {
+			rf.state = 3 //正式开始选举
+			//fmt.Printf("YYYYY\n")
+			//rf.TimeOutFunc()
+			//rf.RestartTime()
+		}
 	}
 }
 
@@ -176,12 +224,11 @@ func (rf *Raft) CountVote(reply RequestVoteReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	//rf.RestartTime()
-
 	if reply.Term > rf.currentTerm { //如果返回的term更大，说明自己过时了
 		rf.currentTerm = reply.Term
 		rf.state = 2
 		rf.votedFor = -1
-
+		rf.persist()
 	} else if rf.state == 3 && reply.VoteGranted {
 		rf.votesCount += 1
 		if rf.votesCount >= (len(rf.peers)+2)/2 {
@@ -197,8 +244,14 @@ func (rf *Raft) CountVote(reply RequestVoteReply) {
 			rf.RestartTime()
 			rf.SendAppendEntries() //需要立即发送心跳稳固自己的地位
 		}
-		return
 	}
+}
+
+func (rf *Raft) ReplyPreVote(args PreVoteArgs, reply *PreVoteReply) {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	reply.Term = rf.currentTerm
+	return
 }
 
 // example RequestVote RPC handler.
@@ -206,18 +259,21 @@ func (rf *Raft) CountVote(reply RequestVoteReply) {
 func (rf *Raft) ReplyRequestVote(args RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here.
 	length := len(rf.log)
-	iHadVoted := rf.votedFor != -1
-	iHaveNewerLog := length-1 > args.LastLogIndex || rf.log[length-1].Term > args.LastLogTerm
-
-	//1. Reply false if term < currentTerm (§5.1)
-	//2. If votedFor is null or candidateId, and candidate’s log is at
-	//least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
+	iHadVoted := rf.votedFor != -1 && rf.votedFor != args.CandidateId
+	iHaveNewerLog := /*length-1 > args.LastLogIndex ||*/ rf.log[length-1].Term > args.LastLogTerm || (length-1 > args.LastLogIndex && rf.log[length-1].Term == args.LastLogTerm)
+	//if !iHadVoted {
+	//	fmt.Printf("XXXX\n")
+	//}
+	//if !iHaveNewerLog {
+	//	fmt.Printf("YYYY\n")
+	//}
 	rf.mu.Lock()         // 加锁
 	defer rf.mu.Unlock() //当函数执行结束，解锁
 
 	if args.Term < rf.currentTerm { //其他节点的任期小，直接拒绝，并提示其他节点修改任期
 		reply.Term = rf.currentTerm
 		reply.VoteGranted = false
+		////fmt.Printf("%d term = %d,but %d term is %d\n",args.CandidateId,args.Term,rf.me,rf.currentTerm)
 	} else if args.Term == rf.currentTerm { //任期相同
 		if !iHadVoted && !iHaveNewerLog { //如果没投过票且log没有candidate新
 			reply.Term = args.Term
@@ -231,14 +287,19 @@ func (rf *Raft) ReplyRequestVote(args RequestVoteArgs, reply *RequestVoteReply) 
 			reply.VoteGranted = false
 			//rf.RestartTime()
 		}
-	} else { //其他节点任期大，给他投票，并且置自己为follower，同步任期,持久化
+	} else { //其他节点任期大，置自己为follower，同步任期,持久化,但不一定给他投票
 		reply.Term = args.Term
-		reply.VoteGranted = true
-		rf.votedFor = args.CandidateId
 		rf.currentTerm = args.Term
 		rf.state = 2
+		rf.votedFor = -1
+		if !iHaveNewerLog { //如果log没有candidate新
+			rf.votedFor = args.CandidateId
+			reply.VoteGranted = true
+			rf.RestartTime()
+		} else {
+			reply.VoteGranted = false
+		}
 		rf.persist()
-		rf.RestartTime()
 	}
 }
 
@@ -299,6 +360,7 @@ func (rf *Raft) HandleAppendEntries(server int, reply AppendEntryReply) { //处�
 			rf.state = 2
 			rf.currentTerm = reply.Term
 			rf.votedFor = -1
+			rf.persist()
 			rf.RestartTime()
 			return
 		} else {
@@ -319,18 +381,23 @@ func (rf *Raft) HandleAppendEntries(server int, reply AppendEntryReply) { //处�
 
 func (rf *Raft) SearchN() int { //对应leader操作的最后一条
 	N := rf.commitIndex + 1
-	count := 0
+	count := 1
 	length := len(rf.peers)
 	for i := 0; i < length; i++ {
+		////fmt.Printf("rf.matchIndex[%d] = %d\n",i, rf.matchIndex[i])
+		if rf.me == i {
+			continue
+		}
 		if rf.matchIndex[i] >= N {
 			count++
 		}
 		if count > length/2 {
 			N++
 			i = 0
-			count = 0
+			count = 1
 		}
 	}
+	////fmt.Printf("N - 1 = %d\n",N - 1)
 	return N - 1
 }
 
@@ -380,6 +447,7 @@ func (rf *Raft) ReplyAppendEntries(args AppendEntryArgs, reply *AppendEntryReply
 		}
 		rf.persist()
 	}
+	////fmt.Printf("i am follower-%d,my log len = %d\n",rf.me, len(rf.log))
 }
 
 // return currentTerm and whether this server
@@ -483,7 +551,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	index = len(rf.log) - 1
 	term = rf.currentTerm
 	rf.persist()
-	fmt.Printf("%d,%d\n", index, term)
+	////fmt.Printf("index = %d,term = %d,rf.me = %d,commitIndex = %d\n", index, term,rf.me,rf.commitIndex)
+	////fmt.Printf("i am leader-%d,my log len = %d\n",rf.me, len(rf.log))
 	return index, term, true
 }
 
@@ -529,7 +598,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.applyCh = applyCh
 	// Your initialization code here.
 	// initialize from state persisted before a crash
-	rf.readPersist(persister.ReadRaftState())
+	rf.readPersist(rf.persister.ReadRaftState())
 	rf.persist()
 	rf.RestartTime()
 
